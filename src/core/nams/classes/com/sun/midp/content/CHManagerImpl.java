@@ -120,10 +120,9 @@ public class CHManagerImpl
      * @param externalAppId ID assigned by the external application manager
      * @param suiteId Suite ID of the MIDlet
      * @param className Class name of the MIDlet
-     * @param errorCode start error code
-     * @param errorDetails start error details
+     * @param error start error code
      */
-    public void midletStartError(int externalAppId, int suiteId, String className,
-                          int errorCode, String errorDetails) {
+    public void midletStartError(int externalAppId, int suiteId,
+                                 String className, int error) {
     }
 }

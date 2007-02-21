@@ -70,6 +70,15 @@ class RegistryStore {
      */
     static final int SEARCH_EXACT   = 0; /** Search by exact match with ID */
     static final int SEARCH_PREFIX  = 1; /** Search by prefix of given value */
+    static final int SEARCH_TEST    = 2; /** Search by prefix of either given 
+                                            value or tested handler ID. */
+
+    static final private int CLASS_NAME_INDEX   = 0; /** Internal index for */
+                                                     /**    classname passing */
+    static final private int SUITE_ID_INDEX     = 1; /** Internal index for */
+                                                     /**    storageId passing */
+    static final private int STR_FIELDS_TO_LOAD = 2; /** Total number of */
+                                                     /**    fields */
 
     /**
      * Handler flags constants.
@@ -122,12 +131,11 @@ class RegistryStore {
      * <BR> The ID MUST NOT be equal to any other registered handler ID.
      * <BR> Every other ID MUST NOT be a prefix of this ID.
      * <BR> The ID MUST NOT be a prefix of any other registered ID. </CITE>
-     * @param testID tested value
-     *
-     * @return conflicted handlers array.
+     * @param id tested value
+     * @return the test result: <code>true</code> / <code>false</code>
      */
-    static ContentHandlerImpl[] findConflicted(String testID) {
-        return findHandler(null, FIELD_ID, testID);
+    static boolean testId(String id) {
+        return getHandler(null, id, SEARCH_TEST) == null;
     }
 
     /**
@@ -138,8 +146,7 @@ class RegistryStore {
      * @param callerId ID value to check access
      * @param searchBy indicator of searchable field. Allowed: 
      *        @link FIELD_TYPES, @link FIELD_SUFFIXES, @link FIELD_ACTIONS 
-     *        values. The special case for the testId implementation: 
-     *        @link FIELD_ID specified.
+     *        values.
      * @param value Searched value
      * @return found handlers array.
      */
@@ -154,7 +161,6 @@ class RegistryStore {
     /**
      * The special finder for exploring handlers registered by the given suite.
      * @param suiteId explored suite Id
-     *
      * @return found handlers array.
      */
     static ContentHandlerImpl[] forSuite(int suiteId) {
@@ -194,7 +200,8 @@ class RegistryStore {
      * @param handlerId ID of content handler to be loaded.
      * @param searchMode ID matching mode. Used <ul>
      *      <li> @link SEARCH_EXACT
-     *      <li> @link SEARCH_PREFIX </ul>
+     *      <li> @link SEARCH_PREFIX or
+     *      <li> @link SEARCH_TEST </ul>
      *
      * @return loaded ContentHandlerImpl object or
      * <code>null</code> if given handler ID is not found in Registry database.
@@ -206,32 +213,6 @@ class RegistryStore {
         }
 
         return deserializeCH(store.getHandler0(callerId, id, searchMode));
-    }
-
-    /**
-     * The special finder for acquiring handler by its suite and class name.
-     * @param suiteId explored suite Id
-     * @param classname requested class name.
-     *
-     * @return found handler or <code>null</code> if none found.
-     */
-    static ContentHandlerImpl getHandler(int suiteId, String classname) {
-        ContentHandlerImpl[] arr = forSuite(suiteId);
-        ContentHandlerImpl handler = null;
-
-        if (classname.length() == 0)
-            throw new IllegalArgumentException("classname can't be emty");
-
-        if (arr != null) {
-            for (int i = 0; i < arr.length; i++) {
-                if (classname.equals(arr[i].classname)) {
-                    handler = arr[i];
-                    break;
-                }
-            }
-        }
-
-        return handler;
     }
 
     /**

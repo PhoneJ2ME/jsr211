@@ -204,12 +204,10 @@ class InvocationStore {
     static InvocationImpl getByTid(int tid, int relative) {
         InvocationImpl invoc = new InvocationImpl();
         int mode = MODE_TID;
-        if (tid != 0) {
-            if (relative < 0) {
-                mode = MODE_TID_PREV;
-            } else if (relative > 0) {
-                mode = MODE_TID_NEXT;
-            }
+        if (relative < 0) {
+            mode = MODE_TID_PREV;
+        } else if (relative > 0) {
+            mode = MODE_TID_NEXT;
         }
         invoc.suiteId = MIDletSuite.UNUSED_SUITE_ID;
         invoc.classname = null;

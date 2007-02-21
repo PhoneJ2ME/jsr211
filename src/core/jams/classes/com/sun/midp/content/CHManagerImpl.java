@@ -67,8 +67,8 @@ public class CHManagerImpl
     extends com.sun.midp.content.CHManager
     implements MIDletProxyListListener
 {
-    /** Installed handlers accumulator. */
-    private RegistryInstaller regInstaller;
+    /** Set of new handlers to be installed for this application. */
+    private Vector newhandlers;
 
     /** The Invocation in progress for an install. */
     private Invocation installInvoc;
@@ -89,10 +89,17 @@ public class CHManagerImpl
      * Register any content handlers parsed from the JAD/Manifest
      * attributes.
      */
-    public void install() {
-        if (regInstaller != null) {
-            regInstaller.install();
-            regInstaller = null; // Let GC take it.
+    public void install() throws InvalidJadException {
+        // Insert new handlers, if any
+        if (newhandlers != null && newhandlers.size() > 0) {
+            RegistryInstaller.install(newhandlers);
+        }
+        if (Logging.TRACE_ENABLED) {
+            for (int i = 0; i < newhandlers.size(); i++) {
+                ContentHandler ch = (ContentHandler)newhandlers.elementAt(i);
+                Logging.report(Logging.INFORMATION, 0,
+                    "Registering content handler " + ch.getAppName());
+            }
         }
     }
 
@@ -126,8 +133,8 @@ public class CHManagerImpl
 	try {
 	    AppBundleProxy bundle =
 		new AppBundleProxy(installer, state, msuite, authority);
-            regInstaller = new RegistryInstaller();
-            regInstaller.preInstall(bundle);
+	    newhandlers = RegistryInstaller.preInstall(bundle);
+
 	} catch (IllegalArgumentException ill) {
 	    throw new InvalidJadException(
 			  InvalidJadException.INVALID_CONTENT_HANDLER,
@@ -201,7 +208,6 @@ public class CHManagerImpl
 	    handler.finish(installInvoc,
 			   success ? Invocation.OK : Invocation.CANCELLED);
             installInvoc = null;
-            regInstaller = null; // Double-clean.
         }
     }
 
@@ -274,10 +280,9 @@ public class CHManagerImpl
      * @param externalAppId ID assigned by the external application manager
      * @param suiteId Suite ID of the MIDlet
      * @param className Class name of the MIDlet
-     * @param errorCode start error code
-     * @param errorDetails start error details
+     * @param error start error code
      */
-    public void midletStartError(int externalAppId, int suiteId, String className,
-                          int errorCode, String errorDetails) {
+    public void midletStartError(int externalAppId, int suiteId,
+                                 String className, int error) {
     }
 }
