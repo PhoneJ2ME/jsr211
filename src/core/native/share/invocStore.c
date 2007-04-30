@@ -334,7 +334,6 @@ static jboolean setParamsFromObj(StoredInvoc* invoc,
     do {
         /* On any error break out of this block */
         int len;
-        pcsl_string* args;
     
         KNI_GetObjectField(invocObj, urlFid, tmp1);
         if (PCSL_STRING_OK != midp_jstring_to_pcsl_string(tmp1, &invoc->url))
@@ -358,31 +357,17 @@ static jboolean setParamsFromObj(StoredInvoc* invoc,
          * can function correctly.
          */
         KNI_GetObjectField(invocObj, argumentsFid, tmp2);
-        len = invoc->argsLen;
-        invoc->argsLen = (KNI_IsNullHandle(tmp2)? 0: KNI_GetArrayLength(tmp2));
-
-        if (len != invoc->argsLen) {
-            if (invoc->args != NULL) {
-                args = invoc->args;
-                while (len-- > 0) {
-                    pcsl_string_free(args++);
-                }
-                pcsl_mem_free(invoc->args);
-            }
-            len = invoc->argsLen;
-            if (len > 0) {
-                args = (pcsl_string*)pcsl_mem_calloc(len, sizeof(pcsl_string));
-                if (args == NULL)
-                    break;
-            } else {
-                args = NULL;
-            }
-            invoc->args = args;
+        len = (KNI_IsNullHandle(tmp2)? 0: KNI_GetArrayLength(tmp2));
+        if (len <= 0) {
+            invoc->argsLen = 0;
+            invoc->args = NULL;
         } else {
-            args = invoc->args;
-        }
-
-        if (len > 0) {
+            pcsl_string* args;
+            args = (pcsl_string*)pcsl_mem_malloc(len * sizeof(pcsl_string));
+            if (args == NULL)
+                break;
+            invoc->argsLen = len;
+            invoc->args = args;
             args += len;
             while (len-- > 0) {
                 KNI_GetObjectArrayElement(tmp2, len, tmp1);
@@ -394,23 +379,16 @@ static jboolean setParamsFromObj(StoredInvoc* invoc,
         /* Copy any data from the Invocation to malloc's memory. */
         KNI_GetObjectField(invocObj, dataFid, tmp2);
         len = (KNI_IsNullHandle(tmp2)? 0: KNI_GetArrayLength(tmp2));
-
-        if (invoc->dataLen != len) {
-            if (invoc->data != NULL) {
-                pcsl_mem_free(invoc->data);
-            }
-            if (len > 0) {
-                invoc->data = pcsl_mem_malloc(len);
-                if (invoc->data == NULL)
-                    break;
-            } else {
-                invoc->data = NULL;
-            }
-            invoc->dataLen = len;
-        }
-        
-        if (len > 0) {
+        if (len <= 0) {
+            invoc->data = NULL;
+            invoc->dataLen = 0;
+        } else {
+            invoc->data = pcsl_mem_malloc(len);
+            if (invoc->data == NULL)
+                break;
+    
             KNI_GetRawArrayRegion(tmp2, 0, len, invoc->data);
+            invoc->dataLen = len;
         }
     
         /* Clear to indicate everything worked. */
@@ -851,32 +829,6 @@ Java_com_sun_midp_content_InvocationStore_setListenNotify0(void) {
 }
 
 /**
- * The utility allocates memory for StoredInvoc struct and initializes it with
- * zeroes.
- * It replaces standard 'calloc'-family function to double-check that allocated
- * buffer is zeroed.
- *
- * @return pointer on zeroed StoredInvoc buffer or NULL if EOM occurs.
- */
-static void* newStoredInvoc() {
-
-#define STOREDINVOC_N   ((sizeof(StoredInvoc) + sizeof(int) - 1) / sizeof(int))
-#define STOREDINVOC_SIZE    (STOREDINVOC_N * sizeof(int))
-
-    int i;
-    int* buf = (int*) pcsl_mem_malloc(STOREDINVOC_SIZE);
-
-    if (buf != NULL) {
-        for (i = 0; i < (int)STOREDINVOC_N; i++) {
-            buf[i] = 0;
-        }
-    }
-    
-    return buf;
-}
-
-
-/**
  * Implementation of native method to queue a new Invocation.
  * The state of the InvocationImpl is copied to the heap
  * and inserted in the head of the invocation queue.
@@ -906,13 +858,13 @@ Java_com_sun_midp_content_InvocationStore_put0(void) {
     do {
         /* On any error break out of this block */
         /* Allocate a new zero'ed struct to save the values in */
-        invoc = (StoredInvoc*) newStoredInvoc();
+        invoc = (StoredInvoc*) pcsl_mem_calloc(1, sizeof (StoredInvoc));
         if (invoc == NULL) {
             KNI_ThrowNew(midpOutOfMemoryError, 
                                 "InvocationStore_put0 no memory for [invoc]");
             break;
         }
-
+    
         /* Assign a new transaction id and set it */
         invoc->tid = invocNextTid();
         KNI_SetIntField(invocObj, tidFid, invoc->tid);
