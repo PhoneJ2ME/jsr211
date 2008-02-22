@@ -40,7 +40,7 @@ package com.sun.j2me.content;
  * requests but blocks, if requested, until it is unblocked.
  */
 public class InvocationStore {
-	protected static final java.io.PrintStream DEBUG_OUT = null; //System.out;
+	protected static final java.io.PrintStream DEBUG_OUT = System.out;
 
     /**
      * The count of cancel requests; access is not synchronized because
@@ -94,10 +94,6 @@ public class InvocationStore {
      * @see #getResponse
      */
     static void put(InvocationImpl invoc) {
-        if (invoc.suiteId == AppProxy.UNUSED_STORAGE_ID ||
-                invoc.classname == null) {
-            throw new NullPointerException();
-        }
         put0(invoc);
     	if (AppProxy.LOG_INFO) {
     	    AppProxy.getCurrent().logInfo("Store put0: " + invoc);
@@ -108,8 +104,7 @@ public class InvocationStore {
      * Get a new InvocationImpl request from the store using a MIDlet
      * suiteId and classname.
      *
-     * @param suiteId the MIDlet suiteId to search for,
-     *  MUST not be <code>null</code>
+     * @param suiteId the MIDlet suiteId to search for
      * @param classname to match, must not be null
      * @param shouldBlock true if the method should block
      *      waiting for an Invocation
@@ -124,10 +119,8 @@ public class InvocationStore {
     	if( DEBUG_OUT != null )
     		DEBUG_OUT.println( "InvocationStore.getRequest: suite = " + suiteId +
     								", classname = '" + classname + "'" );
+        classname.length(); // null pointer check
         InvocationImpl invoc = new InvocationImpl();
-        if (suiteId == AppProxy.UNUSED_STORAGE_ID || classname == null) {
-            throw new NullPointerException();
-        }
         invoc.suiteId = suiteId;
         invoc.classname = classname;
 
@@ -215,7 +208,7 @@ public class InvocationStore {
                 mode = MODE_TID_NEXT;
             }
         }
-        invoc.suiteId = AppProxy.UNUSED_STORAGE_ID;
+        invoc.suiteId = AppProxy.INVALID_SUITE_ID;
         invoc.classname = null;
         invoc.tid = tid;
         return get(invoc, mode, false);
@@ -330,14 +323,10 @@ public class InvocationStore {
      */
     static boolean listen(int suiteId, String classname,
                           boolean request, boolean shouldBlock) {
-        if (suiteId == AppProxy.UNUSED_STORAGE_ID || classname == null) {
-            throw new NullPointerException();
-        }
-        int mode = (request ? MODE_LREQUEST : MODE_LRESPONSE);
-        boolean pending = false;
-
+        final int mode = (request ? MODE_LREQUEST : MODE_LRESPONSE);
+        boolean pending;
         int oldCancelCount = cancelCount;
-        while ((pending = listen0(suiteId, classname,mode, shouldBlock)) == false &&
+        while (!(pending = listen0(suiteId, classname, mode, shouldBlock)) &&
                     shouldBlock) {
             // No pending request; retry unless canceled
             if (cancelCount - oldCancelCount > 0) {
@@ -367,10 +356,6 @@ public class InvocationStore {
      */
     static void setListenNotify(int suiteId, String classname,
                                 boolean request) {
-        if (suiteId == AppProxy.UNUSED_STORAGE_ID || classname == null) {
-            throw new NullPointerException();
-        }
-
         int mode = (request ? MODE_LREQUEST : MODE_LRESPONSE);
         setListenNotify0(suiteId, classname, mode);
 
