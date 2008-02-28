@@ -63,6 +63,7 @@
 #define DEBUG_211
 #define DEBUG_INVOCLC
 #define TRACE_INVOCFIND
+#define TRACE_MIDLETREG
 #endif
 
 /*
@@ -1145,13 +1146,15 @@ static MidletIdChain ** findMidletIdChain( SuiteIdType suiteId, javacall_utf16_s
 KNIEXPORT KNI_RETURNTYPE_VOID
 Java_com_sun_j2me_content_AppProxy_midletIsAdded() {
     SuiteIdType suiteId;
-    javacall_utf16_string midletClassName;
     KNI_StartHandles(1);
 
     suiteId = KNI_GetParameterAsInt(1);
-    GET_PARAMETER_AS_UTF16_STRING(2, classname)
+    GET_PARAMETER_AS_UTF16_STRING(2, midletClassName)
 
     MidletIdChain ** elemPlace, * elem;
+#ifdef TRACE_MIDLETREG
+    javacall_print( "AppProxy_midletIsAdded: %d, '%ls'\n", suiteId, midletClassName );
+#endif
     elemPlace = findMidletIdChain( suiteId, midletClassName );
     if( *elemPlace == NULL || compareMidletIdChain(*elemPlace, suiteId, midletClassName) != 0 ){
         if( (elem = newMidletIdChain()) == NULL ){
@@ -1173,13 +1176,15 @@ Java_com_sun_j2me_content_AppProxy_midletIsAdded() {
 KNIEXPORT KNI_RETURNTYPE_VOID
 Java_com_sun_j2me_content_AppProxy_midletIsRemoved() {
     SuiteIdType suiteId;
-    javacall_utf16_string midletClassName;
     KNI_StartHandles(1);
 
     suiteId = KNI_GetParameterAsInt(1);
-    GET_PARAMETER_AS_UTF16_STRING(2, classname)
+    GET_PARAMETER_AS_UTF16_STRING(2, midletClassName)
 
     MidletIdChain ** elemPlace;
+#ifdef TRACE_MIDLETREG
+    javacall_print( "AppProxy_midletIsRemoved: %d, '%ls'\n", suiteId, midletClassName );
+#endif
     elemPlace = findMidletIdChain( suiteId, midletClassName );
     if( *elemPlace != NULL && compareMidletIdChain(*elemPlace, suiteId, midletClassName) == 0 ){
         // remove elem from the chain
@@ -1197,13 +1202,15 @@ KNIEXPORT KNI_RETURNTYPE_BOOLEAN
 Java_com_sun_j2me_content_AppProxy_isMidletRunning() {
     int res = 0;
     SuiteIdType suiteId;
-    javacall_utf16_string midletClassName;
     KNI_StartHandles(1);
 
     suiteId = KNI_GetParameterAsInt(1);
-    GET_PARAMETER_AS_UTF16_STRING(2, classname)
+    GET_PARAMETER_AS_UTF16_STRING(2, midletClassName)
 
     MidletIdChain ** elemPlace = findMidletIdChain( suiteId, midletClassName );
+#ifdef TRACE_MIDLETREG
+    javacall_print( "AppProxy_isMidletRunning: %d, '%ls'\n", suiteId, midletClassName );
+#endif
     res = (*elemPlace != NULL && compareMidletIdChain(*elemPlace, suiteId, midletClassName) == 0);
 
     RELEASE_UTF16_STRING_PARAMETER
