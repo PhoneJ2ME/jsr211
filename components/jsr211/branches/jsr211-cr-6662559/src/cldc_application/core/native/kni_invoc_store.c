@@ -1166,6 +1166,7 @@ Java_com_sun_j2me_content_AppProxy_midletIsAdded() {
     }
 
     RELEASE_UTF16_STRING_PARAMETER
+    KNI_EndHandles();
     KNI_ReturnVoid();
 }
 
@@ -1188,12 +1189,13 @@ Java_com_sun_j2me_content_AppProxy_midletIsRemoved() {
     }
 
     RELEASE_UTF16_STRING_PARAMETER
+    KNI_EndHandles();
     KNI_ReturnVoid();
 }
 
 KNIEXPORT KNI_RETURNTYPE_BOOLEAN
 Java_com_sun_j2me_content_AppProxy_isMidletRunning() {
-    int res = FALSE;
+    int res = 0;
     SuiteIdType suiteId;
     javacall_utf16_string midletClassName;
     KNI_StartHandles(1);
@@ -1205,6 +1207,7 @@ Java_com_sun_j2me_content_AppProxy_isMidletRunning() {
     res = (*elemPlace != NULL && compareMidletIdChain(*elemPlace, suiteId, midletClassName) == 0);
 
     RELEASE_UTF16_STRING_PARAMETER
+    KNI_EndHandles();
     KNI_ReturnBoolean( res );
 }
 
@@ -2004,7 +2007,7 @@ static void handle_javanotify_chapi_java_invoke(
 jsr211_boolean jsr211_platform_finish(int tid, jsr211_boolean *should_exit)
 {
     javacall_const_utf16_string url;
-    javacall_const_utf16_string *args;
+    javacall_utf16_string *args;
     int i;
     javacall_chapi_invocation_status status;
     javacall_bool _should_exit;
