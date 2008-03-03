@@ -469,7 +469,11 @@ class AppProxy {
     boolean launch(String displayName) {
     	if( isMidletRunning(storageId, classname) )
         	return true;
-    	/*com.sun.midp.main.MIDletProxyList list = 
+    	/* The commented code is another method to check midlet presence in
+    	 * the device memory. Unfortunately it works only in AMS thread.
+    	 * The code isn't deleted because it reminds about a wrong way of 
+    	 * starting a midlet. 
+    	com.sun.midp.main.MIDletProxyList list = 
     	  		com.sun.midp.main.MIDletProxyList.getMIDletProxyList(classSecurityToken);
     	if( list != null && list.isMidletInList(storageId, classname) )
     		return true;*/
