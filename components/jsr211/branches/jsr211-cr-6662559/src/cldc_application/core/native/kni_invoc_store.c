@@ -64,6 +64,7 @@
 #define DEBUG_INVOCLC
 #define TRACE_INVOCFIND
 #define TRACE_MIDLETREG
+#define TRACE_BLOCKING
 #endif
 
 /*
@@ -1153,7 +1154,7 @@ Java_com_sun_j2me_content_AppProxy_midletIsAdded() {
 
     MidletIdChain ** elemPlace, * elem;
 #ifdef TRACE_MIDLETREG
-    javacall_print( "AppProxy_midletIsAdded: %d, '%ls'\n", suiteId, midletClassName );
+    printf( "AppProxy_midletIsAdded: %d, '%ls'\n", suiteId, midletClassName );
 #endif
     elemPlace = findMidletIdChain( suiteId, midletClassName );
     if( *elemPlace == NULL || compareMidletIdChain(*elemPlace, suiteId, midletClassName) != 0 ){
@@ -1183,7 +1184,7 @@ Java_com_sun_j2me_content_AppProxy_midletIsRemoved() {
 
     MidletIdChain ** elemPlace;
 #ifdef TRACE_MIDLETREG
-    javacall_print( "AppProxy_midletIsRemoved: %d, '%ls'\n", suiteId, midletClassName );
+    printf( "AppProxy_midletIsRemoved: %d, '%ls'\n", suiteId, midletClassName );
 #endif
     elemPlace = findMidletIdChain( suiteId, midletClassName );
     if( *elemPlace != NULL && compareMidletIdChain(*elemPlace, suiteId, midletClassName) == 0 ){
@@ -1209,7 +1210,7 @@ Java_com_sun_j2me_content_AppProxy_isMidletRunning() {
 
     MidletIdChain ** elemPlace = findMidletIdChain( suiteId, midletClassName );
 #ifdef TRACE_MIDLETREG
-    javacall_print( "AppProxy_isMidletRunning: %d, '%ls'\n", suiteId, midletClassName );
+    printf( "AppProxy_isMidletRunning: %d, '%ls'\n", suiteId, midletClassName );
 #endif
     res = (*elemPlace != NULL && compareMidletIdChain(*elemPlace, suiteId, midletClassName) == 0);
 
@@ -1449,6 +1450,9 @@ static void blockThread() {
     if (p == NULL) {
         p = (MidpReentryData*)(SNI_AllocateReentryData(sizeof (MidpReentryData)));
     }
+#ifdef TRACE_BLOCKING
+    printf( "blockThread %p\n", p );
+#endif
     p->waitingFor = JSR211_SIGNAL;
     p->status = JSR211_INVOKE_OK;
     SNI_BlockThread();
@@ -1479,13 +1483,22 @@ static void unblockWaitingThreads(int newStatus) {
     const int status_mask = JSR211_INVOKE_OK | JSR211_INVOKE_CANCELLED;
     int st = newStatus==STATUS_OK ? JSR211_INVOKE_OK: JSR211_INVOKE_CANCELLED;
 
+#ifdef TRACE_BLOCKING
+    printf( "unblockWaitingThreads( %d ). blocked_threads count = %d\n", newStatus, n );
+#endif
     for (i = 0; i < n; i++) {
         MidpReentryData *p = (MidpReentryData*)(blocked_threads[i].reentry_data);
         if (p == NULL) {
             continue;
         }
+#ifdef TRACE_BLOCKING
+        printf( "blocked_thread[%d] %p, waitingFor '%x', status '%x'\n", i, p, p->waitingFor, p->status );
+#endif
         if (p->waitingFor == JSR211_SIGNAL && (p->status | status_mask) != 0) {
             JVMSPI_ThreadID id = blocked_threads[i].thread_id;
+#ifdef TRACE_BLOCKING
+            printf( "try to unblock. id = %p\n", id );
+#endif
             if (id != NULL) {
                 p->status = st;
                 SNI_UnblockThread(id);
@@ -1596,7 +1609,7 @@ static StoredLink* findLink(StoredInvoc *invoc) {
 void jsr211_remove_invocation(StoredInvoc* invoc) {
     StoredLink *link;
 #ifdef DEBUG_211
-    javacall_print( "jsr211_remove_invocation: %d\n", invoc->tid );
+    printf( "jsr211_remove_invocation: %d\n", invoc->tid );
 #endif
     link = findLink(invoc);
     if (NULL != link)
