@@ -1,7 +1,7 @@
 /*
  *
  *
- * Copyright  1990-2008 Sun Microsystems, Inc. All Rights Reserved.
+ * Copyright  1990-2007 Sun Microsystems, Inc. All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER
  * 
  * This program is free software; you can redistribute it and/or
@@ -30,7 +30,6 @@ import java.util.Vector;
 import java.util.Hashtable;
 
 import com.sun.midp.security.Permissions;
-import com.sun.j2me.security.Token;
 import com.sun.midp.security.SecurityToken;
 
 import com.sun.midp.midlet.MIDletSuite;
@@ -46,8 +45,6 @@ import com.sun.midp.events.EventTypes;
 import com.sun.midp.events.EventQueue;
 
 import com.sun.midp.io.Util;
-
-import javax.microedition.content.ContentHandlerException;
 
 /**
  * Each AppProxy instance provides access to the AMS information
@@ -107,8 +104,6 @@ class AppProxy {
 
     /** The log flag to enable informational messages. */
     static final Logger LOGGER = null; // new Logger();
-    
-    private static final boolean isInSvmMode = isInSvmMode();
 
     /** The known AppProxy instances. Key is classname. */
     protected Hashtable appmap;
@@ -143,15 +138,6 @@ class AppProxy {
     static final String VENDOR_PROP        = "MIDlet-Vendor";
     
     static final int EXTERNAL_SUITE_ID = MIDletSuite.UNUSED_SUITE_ID;
-
-    // native methods
-    static native boolean isInSvmMode();
-    
-    static native void midletIsAdded( int suiteId, String className );
-    static native boolean isMidletRunning( int suiteId, String className );
-    static native void midletIsRemoved( int suiteId, String className );
-    
-    static native boolean isSuiteRunning( int suiteId );
 
     /**
      * Sets the security token used for privileged operations.
@@ -391,10 +377,8 @@ class AppProxy {
     	new MIDletSuiteUser(){
 			void use(MIDletSuite msuite) {
 		        try {
-		            msuite.checkForPermission(
-		            		/*Permissions.CHAPI_REGISTER*/ 
-		            		"javax.microedition.content.ContentHandler",
-	                        getApplicationName(), reason);
+		            msuite.checkForPermission(Permissions.CHAPI_REGISTER,
+	                          getApplicationName(), reason);
 		        } catch (InterruptedException ie) {
 		            throw new SecurityException("interrupted");
 		        }
@@ -407,15 +391,14 @@ class AppProxy {
      * @param securityToken a generic security token
      * @exception SecurityException thrown if internal API use not allowed
      */
-    final static void checkAPIPermission(Token token) {
-		SecurityToken securityToken = token.getSecurityToken();
+    final static void checkAPIPermission(SecurityToken securityToken) {
         if (securityToken != null) {
-            securityToken.checkIfPermissionAllowed(Permissions.MIDP/*_PERMISSION_NAME*/);
+            securityToken.checkIfPermissionAllowed(Permissions.MIDP);
         } else {
             MIDletSuite msuite =
                 MIDletStateHandler.getMidletStateHandler().getMIDletSuite();
             if (msuite != null) {
-                msuite.checkIfPermissionAllowed(Permissions.AMS_PERMISSION_NAME);
+                msuite.checkIfPermissionAllowed(Permissions.AMS);
             }
         }
     }
@@ -464,6 +447,10 @@ class AppProxy {
         eventQueue.sendNativeEventToIsolate(event, amsIsolateId);
     }
     
+    static native void midletIsAdded( int suiteId, String className );
+    static native boolean isMidletRunning( int suiteId, String className );
+    static native void midletIsRemoved( int suiteId, String className );
+
     /**
      * Launch this application.
      * Don't launch another application unless
@@ -482,14 +469,18 @@ class AppProxy {
     boolean launch(String displayName) {
     	if( isMidletRunning(storageId, classname) )
         	return true;
-    	if( !MIDletSuiteUtils.isAmsIsolate() ){
-	    	if( isInSvmMode )
-	    		return false;
-	    	if( isSuiteRunning(storageId) )
-	    		return false;
-    	}
-        return MIDletSuiteUtils.execute(classSecurityToken,
-             						storageId, classname, displayName);
+    	/* The commented code is another method to check midlet presence in
+    	 * the device memory. Unfortunately it works only in AMS thread.
+    	 * The code isn't deleted because it reminds about a wrong way of 
+    	 * starting a midlet. 
+    	com.sun.midp.main.MIDletProxyList list = 
+    	  		com.sun.midp.main.MIDletProxyList.getMIDletProxyList(classSecurityToken);
+    	if( list != null && list.isMidletInList(storageId, classname) )
+    		return true;*/
+    	if( MIDletSuiteUtils.isAmsIsolate() )
+	        return MIDletSuiteUtils.execute(classSecurityToken,
+	                                 	storageId, classname, displayName);
+    	return false;
     }
 
 
@@ -621,47 +612,6 @@ class AppProxy {
     }
 
     /**
-     * Starts native content handler.
-     * @param handler Content handler to be executed.
-     * @return true if invoking app should exit.
-     * @exception ContentHandlerException if no such handler ID in the Registry
-     * or native handlers execution is not supported.
-     */
-    static boolean launchNativeHandler(String handlerID) 
-    										throws ContentHandlerException {
-        int result = launchNativeHandler0(handlerID);
-        if (result < 0) {
-            throw new ContentHandlerException(
-                        "Unable to launch platform handler",
-                        ContentHandlerException.NO_REGISTERED_HANDLER);
-        }
-        return (result > 0);
-    }
-
-    /**
-     * Informs platform about finishing of processing platform's request
-     * @param invoc finished invocation
-     * @return should_exit flag for the invocation handler
-     */
-    static boolean platformFinish(int tid) {
-        return platformFinish0(tid);
-    }
-
-    /**
-     * Starts native content handler.
-     * @param handlerId ID of the handler to be executed
-     * @return result status:
-     * <ul>
-     * <li> 0 - LAUNCH_OK 
-     * <li> > 0 - LAUNCH_OK_SHOULD_EXIT
-     * <li> &lt; 0 - error
-     * </ul>
-     */
-    private static native int launchNativeHandler0(String handlerId);
-
-    private static native boolean platformFinish0(int tid);
-
-    /**
      * Create a printable representation of this AppProxy.
      * @return a printable string
      */
@@ -708,5 +658,39 @@ class AppProxy {
     		}
 			return this;
     	}
+    }
+}
+
+class Logger {
+	
+	static final private java.io.PrintStream out = System.out;
+
+    /**
+     * Log an information message to the system logger for this AppProxy.
+     * @param msg a message to write to the log.
+     */
+    void println(String msg) {
+        out.println(">> " + threadID() + ": " + msg);
+    }
+
+    /**
+     * Log an information message to the system logger for this AppProxy.
+     * @param msg a message to write to the log.
+     * @param t Throwable to be logged
+     */
+    void log(String msg, Throwable t) {
+        out.println("** " + threadID() + ": " + msg);
+        t.printStackTrace();
+    }
+
+
+    /**
+     * Map a thread to an printable string.
+     * @return a short string for the thread
+     */
+    private String threadID() {
+        Thread thread = Thread.currentThread();
+        int i = thread.hashCode() & 0xff;
+        return "T" + i;
     }
 }

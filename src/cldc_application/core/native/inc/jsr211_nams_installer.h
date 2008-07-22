@@ -24,6 +24,11 @@
  * information or have any questions. 
  */
 
+/*
+ * @(#)jsr211_nams_installer.h
+ *
+ */
+
 #ifndef _JSR211_NAMS_INSTALLER_H_
 #define _JSR211_NAMS_INSTALLER_H_
 
